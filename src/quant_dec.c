@@ -14,6 +14,7 @@
 #include "common.h"
 #include "freq.h"
 #include "lpcnet_quant.h"
+#include "from_codec2/defines.h"
 
 #define NB_FEATURES    55
 #define MAX_STAGES     5    /* max number of VQ stages                */
@@ -85,8 +86,8 @@ int main(int argc, char *argv[]) {
     q->weight = weight; q->pred = pred; 
     q->pitch_bits = pitch_bits; q->dec = dec;
     lpcnet_quant_compute_bits_per_frame(q);
-    
-    char frame[q->bits_per_frame];
+
+    VLA_CALLOC(char, frame, q->bits_per_frame);
     fprintf(stderr, "dec: %d pred: %3.2f num_stages: %d mbest: %d bits_per_frame: %d frame: %2d ms bit_rate: %5.2f bits/s",
             q->dec, q->pred, q->num_stages, q->mbest, q->bits_per_frame, dec*10, (float)q->bits_per_frame/(dec*0.01));
     fprintf(stderr, "\n");
@@ -116,8 +117,8 @@ int main(int argc, char *argv[]) {
     } while(bits_read);
 
     fprintf(stderr,"f: %d\n",q->f);
-    
     fclose(fin); fclose(fout);
+    VLA_FREE(frame);
 }
 
 

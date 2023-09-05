@@ -14,6 +14,7 @@
 #include "common.h"
 #include "freq.h"
 #include "lpcnet_quant.h"
+#include "from_codec2/defines.h"
 
 #define MAX_STAGES     5    /* max number of VQ stages                */
 #define NOUTLIERS      5    /* range of outilers to track in 1dB steps */
@@ -80,8 +81,8 @@ int main(int argc, char *argv[]) {
     q->weight = weight; q->pred = pred; q->mbest = mbest_survivors;
     q->pitch_bits = pitch_bits; q->dec = dec;
     lpcnet_quant_compute_bits_per_frame(q);
-    
-    char frame[q->bits_per_frame];
+
+    VLA_CALLOC(char, frame, q->bits_per_frame);
     fprintf(stderr, "dec: %d pred: %3.2f num_stages: %d mbest: %d bits_per_frame: %d frame: %2d ms bit_rate: %5.2f bits/s",
             q->dec, q->pred, q->num_stages, q->mbest, q->bits_per_frame, dec*10, (float)q->bits_per_frame/(dec*0.01));
     fprintf(stderr, "\n");
@@ -90,20 +91,21 @@ int main(int argc, char *argv[]) {
     fout = stdout;
 
     int bits_written = 0;
-    
+
     while(fread(features, sizeof(float), NB_FEATURES, fin) == NB_FEATURES) {
         if ((q->f % q->dec) == 0) {
             lpcnet_features_to_frame(q, features, frame);
             bits_written += fwrite(frame, sizeof(char), q->bits_per_frame, fout);
         }
         q->f++;
-        
+
         fflush(stdin);
         fflush(stdout);
     }
 
     fprintf(stderr, "bits_written %d\n", bits_written);
     fclose(fin); fclose(fout); lpcnet_quant_destroy(q);
+    VLA_FREE(frame);
 }
 
 

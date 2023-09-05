@@ -178,7 +178,7 @@ void *nlp_create(C2CONST *c2const)
     }
 
     assert(m <= PMAX_M);
-    
+
     for(i=0; i<m/DEC; i++) {
 	nlp->w[i] = 0.5 - 0.5*cosf(2*PI*i/(m/DEC-1));
     }
@@ -294,7 +294,7 @@ float nlp(
 
         m /= 2; n /= 2;
 
-        float Sn8k[n];
+        VLA_CALLOC(float, Sn8k, n);
         fdmdv_16_to_8(Sn8k, &nlp->Sn16k[FDMDV_OS_TAPS_16K], n);
 
         /* Square latest input samples */
@@ -303,6 +303,7 @@ float nlp(
 	    nlp->sq[i] = Sn8k[j]*Sn8k[j];
         }
         assert(j <= n);
+        VLA_FREE(Sn8k);
     }
     //fprintf(stderr, "n: %d m: %d\n", n, m);
 

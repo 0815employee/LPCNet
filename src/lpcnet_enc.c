@@ -41,6 +41,7 @@
 #include "lpcnet_dump.h"
 #include "lpcnet_quant.h"
 #include "lpcnet_freedv_internal.h"
+#include "from_codec2/defines.h"
 
 int main(int argc, char **argv) {
     FILE *fin, *fout;
@@ -146,12 +147,12 @@ int main(int argc, char **argv) {
             q->dec, q->pred, q->num_stages, q->mbest, q->bits_per_frame, dec*10, (float)q->bits_per_frame/(dec*0.01));
     fprintf(stderr, "\n");
 
-    char frame[lpcnet_bits_per_frame(lf)];
+    VLA_CALLOC(char, frame, lpcnet_bits_per_frame(lf));
     int f=0;
     int bits_written=0;
-    short pcm[lpcnet_samples_per_frame(lf)];
+    VLA_CALLOC(short, pcm, lpcnet_samples_per_frame(lf));
 
-    while (1) {      
+    while (1) {
         int nread = fread(pcm, sizeof(short), lpcnet_samples_per_frame(lf), fin);
         if (nread != lpcnet_samples_per_frame(lf)) break;
 
@@ -166,6 +167,7 @@ int main(int argc, char **argv) {
     lpcnet_freedv_destroy(lf);
     fprintf(stderr, "bits_written %d\n", bits_written);
     fclose(fin); fclose(fout);
+    VLA_FREE(frame, pcm);
     return 0;
 }
 

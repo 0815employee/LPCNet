@@ -32,6 +32,7 @@
 
 #include <stdlib.h>
 #include <math.h>
+#include <stdint.h>
 #include "opus_types.h"
 #include "arch.h"
 #include "common.h"
@@ -45,8 +46,10 @@
 #include "vec_avx.h"
 #elif __ARM_NEON__ || __aarch64__
 #include "vec_neon.h"
-#else
-#warning Compiling without any vectorization. This code will be very slow
+#else 
+	#ifdef MSC_VER
+	#warning Compiling without any vectorization. This code will be very slow
+	#endif
 #include "vec.h"
 #endif
 

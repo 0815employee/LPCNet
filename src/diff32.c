@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <getopt.h>
+#include "from_codec2/defines.h"
 
 #define NB_FEATURES   55
 #define FDIFF_THRESH  0.001
@@ -62,11 +63,11 @@ int main(int argc, char *argv[]) {
     }
 
     float fdiff;
-    float f1[stride], f2[stride], s[stride], n[stride];
+    VLA_CALLOC4(float, f1, f2, s, n, stride);
     for(i=0; i<stride; i++) {s[i] = 0.0; n[i] = 0.0; }
-    
-    while(fread(&f1,sizeof(float),stride,file1) == stride) {
-        ret = fread(&f2,sizeof(float),stride,file2);
+
+    while(fread(f1,sizeof(float),stride,file1) == stride) {
+        ret = fread(f2,sizeof(float),stride,file2);
         if (ret != stride) break;
         for(i=0; i<stride; i++) {
             s[i] += f1[i]*f1[i];
@@ -76,7 +77,10 @@ int main(int argc, char *argv[]) {
             /* flag any gross errors straight away */
             if (isnan(fdiff) || (fdiff > FDIFF_THRESH)) {
                 fprintf(stderr, "f: %d i: %d %f %f %f\n", f, i, f1[i], f2[i], fdiff);
-                if (cont == 0) exit(1);
+                if (cont == 0) {
+                    VLA_FREE(f1, f2, s, n);
+                    exit(1);
+                }
             }
         }
         f++;
@@ -90,7 +94,9 @@ int main(int argc, char *argv[]) {
         float snr = s[i]/(n[i]+1E-12);
         if ((s[i] != 0) && (snr < snr_min)) snr_min = snr;
         fprintf(stderr, "i: %d s: %e n: %e SNR: %e %e\n",  i, s[i], n[i], snr, snr_min);
-    }   
+    }
+
+    VLA_FREE(f1, f2, s, n);
     
     if (snr_min > SNR_THRESH)
         exit(0);

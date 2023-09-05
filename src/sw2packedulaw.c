@@ -37,6 +37,7 @@
 #include "celt_lpc.h"
 #include <assert.h>
 #include <getopt.h>
+#include "from_codec2/defines.h"
 
 #define NB_FEATURES 55
 #define CODEC2_LPC_ORDER 10
@@ -49,7 +50,7 @@ typedef struct {
 
 void write_audio(DenoiseState *st, const short *pcm, float noise_std, FILE *file, int frame_size) {
   int i;
-  unsigned char data[4*frame_size];
+  VLA_CALLOC(unsigned char, data, 4*frame_size);
   for (i=0;i<frame_size;i++) {
     int noise;
     float p=0;
@@ -69,18 +70,19 @@ void write_audio(DenoiseState *st, const short *pcm, float noise_std, FILE *file
     noise = (int)floor(.5 + noise_std*.707*(log_approx((float)rand()/RAND_MAX)-log_approx((float)rand()/RAND_MAX)));
     e += noise;
     e = IMIN(255, IMAX(0, e));
-    
+
     RNN_MOVE(&st->sig_mem[1], &st->sig_mem[0], LPC_ORDER-1);
     st->sig_mem[0] = p + ulaw2lin(e);
     st->exc_mem = e;
   }
   fwrite(data, 4*frame_size, 1, file);
+  VLA_FREE(data);
 }
 
 /* takes ulaw out of predictor path, and no noise injection */
 void write_audio_linear(DenoiseState *st, const short *pcm, FILE *file, int frame_size) {
   int i;
-  unsigned char data[4*frame_size];
+  VLA_CALLOC(unsigned char, data, 4*frame_size);
   for (i=0;i<frame_size;i++) {
     float p=0;
     float e;
@@ -102,6 +104,7 @@ void write_audio_linear(DenoiseState *st, const short *pcm, FILE *file, int fram
     st->exc_mem = lin2ulaw(e);
   }
   fwrite(data, 4*frame_size, 1, file);
+  VLA_FREE(data);
 }
 
 int main(int argc, char *argv[]) {
@@ -161,14 +164,14 @@ int main(int argc, char *argv[]) {
 	fprintf(stderr, "Can't open %s\n", argv[dx+2]);
 	exit(1);
     }
-    
-    short frame[frame_size];
+
+    VLA_CALLOC(short, frame, frame_size);
     while (fread(frame, sizeof(short), frame_size, fsw) == (unsigned)frame_size) {
 	float features[NB_FEATURES];
 	int ret = fread(features, sizeof(float), NB_FEATURES, ffeature);
 	if (ret != NB_FEATURES) {
 	    fprintf(stderr, "feature file ended early!\n");
-	    exit(1);		
+	    exit(1);
 	}
 	for(int i=0; i<CODEC2_LPC_ORDER; i++) {
 	    st.lpc[i] = features[18+i];
@@ -183,6 +186,7 @@ int main(int argc, char *argv[]) {
     fclose(fsw);
     fclose(ffeature);
     fclose(fpackedpcm);
+    VLA_FREE(frame);
     return 0;
 }
 

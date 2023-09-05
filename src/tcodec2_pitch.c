@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "codec2_pitch.h"
+#include "from_codec2/defines.h"
 
 int frames;
 
@@ -30,17 +31,18 @@ int main(int argc, char *argv[])
     int Sn_size, new_samples_each_call;
     CODEC2_PITCH *c2_pitch = codec2_pitch_create(&Sn_size, &new_samples_each_call);
 
-    short buf[new_samples_each_call];
-    float Sn[Sn_size];	               /* float buffer of input speech samples */
+    VLA_CALLOC(short, buf, new_samples_each_call);
+    VLA_CALLOC(float, Sn, Sn_size);	               /* float buffer of input speech samples */
     FILE *fin,*fout;
     int   pitch_samples;
-    float f0, voicing;    
+    float f0, voicing;
     int   i;
 
     /* Input file */
 
     if ((fin = fopen(argv[1],"rb")) == NULL) {
       printf("Error opening input speech file: %s\n",argv[1]);
+      VLA_FREE(buf, Sn);
       exit(1);
     }
 
@@ -48,6 +50,7 @@ int main(int argc, char *argv[])
 
     if ((fout = fopen(argv[2],"wt")) == NULL) {
       printf("Error opening output text file: %s\n",argv[2]);
+      VLA_FREE(buf, Sn);
       exit(1);
     }
 
@@ -70,9 +73,10 @@ int main(int argc, char *argv[])
 
     fclose(fin);
     fclose(fout);
-    
+
     codec2_pitch_destroy(c2_pitch);
-    
+
+    VLA_FREE(buf, Sn);
     return 0;
 }
 

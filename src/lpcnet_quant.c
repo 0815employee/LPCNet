@@ -13,6 +13,7 @@
 #include "lpcnet_quant.h"
 #include "mbest.h"
 #include "freq.h"
+#include "from_codec2/defines.h"
 
 FILE *lpcnet_fsv = NULL;
 int lpcnet_verbose = 0;
@@ -94,7 +95,8 @@ void quant_pred(float vec_out[],  /* prev quant vector, and output */
                 float vq[],
                 int m[], int k)
 {
-    float err[k], w[k], se, se1, se2;
+    VLA_CALLOC2(float, err, w, k);
+    float se, se1, se2;
     int i,s,ind;
 
     pv("\nvec_in: ", vec_in);
@@ -125,6 +127,8 @@ void quant_pred(float vec_out[],  /* prev quant vector, and output */
         pv("vec_out: ",vec_out);
     }
     if (lpcnet_fsv != NULL) fprintf(lpcnet_fsv, "\n");
+
+    VLA_FREE(err, w);
 }
 
 // mbest algorithm version
@@ -139,12 +143,13 @@ void quant_pred_mbest(float vec_out[],
                       int mbest_survivors,
                       float ber)
 {
-    float err[k], w[k], se1;
+    VLA_CALLOC2(float, err, w, k);
+    float se1;
     int i,j,s,s1,ind;
-    
-    struct MBEST *mbest_stage[num_stages];
-    int index[num_stages];
-    float target[k];
+
+    VLA_CALLOC(struct MBEST *, mbest_stage, num_stages);
+    VLA_CALLOC(int, index, num_stages);
+    VLA_CALLOC(float, target, k);
     
     for(i=0; i<num_stages; i++) {
         mbest_stage[i] = lpcnet_mbest_create(mbest_survivors, num_stages);
@@ -220,6 +225,8 @@ void quant_pred_mbest(float vec_out[],
     
     for(i=0; i<num_stages; i++)
         lpcnet_mbest_destroy(mbest_stage[i]);
+
+    VLA_FREE(err, w, mbest_stage, index, target);
 }
 
 

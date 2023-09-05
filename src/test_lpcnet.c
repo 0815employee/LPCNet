@@ -32,6 +32,7 @@
 #include "freq.h"
 #include "nnet_rw.h"
 #include "nnet_data.h"
+#include "from_codec2/defines.h"
 
 int main(int argc, char **argv) {
     FILE *fin, *fout;
@@ -113,10 +114,10 @@ int main(int argc, char **argv) {
         }
     }
 
+    VLA_CALLOC(short, pcm, frame_size);
     while (1) {
         float in_features[NB_TOTAL_FEATURES];
         float features[NB_FEATURES];
-        short pcm[frame_size];
         int nread = fread(in_features, sizeof(features[0]), NB_TOTAL_FEATURES, fin);
         if (nread != NB_TOTAL_FEATURES) break;
         RNN_COPY(features, in_features, NB_FEATURES);
@@ -124,6 +125,7 @@ int main(int argc, char **argv) {
         fwrite(pcm, sizeof(pcm[0]), frame_size, fout);
         if (fout == stdout) fflush(stdout);
     }
+    VLA_FREE(pcm);
     fclose(fin);
     fclose(fout);
     lpcnet_destroy(net);

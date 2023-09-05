@@ -10,7 +10,11 @@ set(codec2_import_srcs
 # Set visibility of files brought in from Codec2 so that they're not visible to 
 # users (such as Codec2 itself).
 foreach(CODEC2_FILE IN LISTS codec2_import_srcs)
-    set_source_files_properties(${CODEC2_FILE} PROPERTIES COMPILE_FLAGS "-fvisibility=hidden -include ${CMAKE_CURRENT_SOURCE_DIR}/from_codec2/codec2_renames.h")
+	if( NOT MSVC )
+		set_source_files_properties(${CODEC2_FILE} PROPERTIES COMPILE_FLAGS "-fvisibility=hidden -include ${CMAKE_CURRENT_SOURCE_DIR}/from_codec2/codec2_renames.h")
+	else()
+		set_source_files_properties(${CODEC2_FILE} PROPERTIES COMPILE_FLAGS "/FI ${CMAKE_CURRENT_SOURCE_DIR}/from_codec2/codec2_renames.h")
+	endif()
 endforeach()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}
@@ -41,6 +45,9 @@ endforeach()
 endif(LPCNET_C_PROC_FLAGS)
 
 add_library(lpcnetfreedv SHARED ${lpcnet_freedv_srcs} ${codec2_import_srcs})
+if(MSVC)
+add_compile_definitions(lpcnetfreedv LPCNET_LIBRARY_EXPORTS)
+endif()
 
 set_target_properties(lpcnetfreedv PROPERTIES
     PUBLIC_HEADER lpcnet_freedv.h
@@ -51,6 +58,7 @@ target_include_directories(lpcnetfreedv INTERFACE
     $<INSTALL_INTERFACE:include/lpcnet>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
 )
+
 install(TARGETS lpcnetfreedv EXPORT lpcnetfreedv-config
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR} COMPONENT lib
@@ -65,6 +73,8 @@ install(EXPORT lpcnetfreedv-config
 export(TARGETS lpcnetfreedv
     FILE ${CMAKE_BINARY_DIR}/lpcnetfreedv.cmake
 )
+
+if(NOT MSVC)
 
 add_executable(dump_data dump_data.c)
 target_link_libraries(dump_data lpcnetfreedv m)
@@ -139,3 +149,5 @@ target_link_libraries(thash lpcnetfreedv m)
 install(TARGETS lpcnet_enc lpcnet_dec
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT tools
     )
+
+endif()

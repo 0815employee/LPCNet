@@ -43,6 +43,7 @@
 #include "lpcnet_quant.h"
 #include "lpcnet_freedv_internal.h"
 #include "nnet_rw.h"
+#include "from_codec2/defines.h"
 
 void lpcnet_open_test_file(LPCNetState *lpcnet, char file_name[]);
 
@@ -176,11 +177,11 @@ int main(int argc, char **argv) {
     fprintf(stderr, "\n");
 
     int nbits = 0, nerrs = 0;
-    char frame[q->bits_per_frame];
+    VLA_CALLOC(char, frame, q->bits_per_frame);
     int bits_read = 0;
-    short pcm[lpcnet_samples_per_frame(lf)];
+    VLA_CALLOC(short, pcm, lpcnet_samples_per_frame(lf));
     if (ber_en == -1) ber_en = q->bits_per_frame-1;
-    
+
     do {
 
         bits_read = fread(frame, sizeof(char), q->bits_per_frame, fin);
@@ -194,22 +195,23 @@ int main(int argc, char **argv) {
                     nerrs++;
                 }
             }
-        }            
+        }
 
         lpcnet_dec(lf,frame,pcm);
         fwrite(pcm, sizeof(short), lpcnet_samples_per_frame(lf), fout);
-        
+
         if (fout == stdout) fflush(stdout);
-        
+
     } while(bits_read != 0);
-    
+
     fclose(fin);
     fclose(fout);
 
     lpcnet_freedv_destroy(lf);
-    
+
     if (ber != 0.0)
         fprintf(stderr, "ber_st: %d ber_en: %d nbits: %d nerr: %d BER: %4.3f\n", ber_st, ber_en,
                 nbits, nerrs, (float)nerrs/nbits);
+    VLA_FREE(frame, pcm);
     return 0;
 }

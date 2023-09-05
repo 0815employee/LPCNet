@@ -85,8 +85,11 @@ else()
 endif()
 
 # Set default flags
+if(NOT MSVC)
 set(CMAKE_C_FLAGS "-Wall -W -Wextra -Wno-unused-function -O3 -g -I. -MD ${CMAKE_C_FLAGS} -DENABLE_ASSERTIONS")
-
+else()
+set(CMAKE_C_FLAGS "/O2")
+endif()
 # Arch specific stuff here
 message(STATUS "Host system arch is: ${CMAKE_SYSTEM_PROCESSOR}")
 
@@ -126,6 +129,9 @@ if(NOT DISABLE_CPU_OPTIMIZATION)
     elseif(WIN32)
         message(STATUS "No detection capability on Windows, assuming AVX is available.")
         set(AVX_PRESENT TRUE)
+        set(AVX2_PRESENT FALSE)
+        set(SSE_PRESENT TRUE)
+        set(NEON_PRESENT FALSE)
     else()
         message(STATUS "System is not *nix, processor specific optimizations cannot be determined.")
         message("   You can try setting them manually, e.g.: -DAVX2=1 or -DAVX=1 or -DNEON=1")
@@ -149,19 +155,35 @@ set(LPCNET_C_PROC_FLAGS "")
 
 if(${AVX2} AND (${AVX2_PRESENT} OR ${AVX2_PRESENT} GREATER 0))
     message(STATUS "avx2 processor flags found or enabled.")
+	if(NOT MSVC)
     set(LPCNET_C_PROC_FLAGS -mavx2 -mfma)
+	else()
+	set(LPCNET_C_PROC_FLAGS /arch:AVX2)	
+	endif()
 elseif(${AVX} AND (${AVX_PRESENT} OR ${AVX_PRESENT} GREATER 0))
 # AVX2 machines will also match on AVX
     message(STATUS "avx processor flags found or enabled.")
+	if(NOT MSVC)
     set(LPCNET_C_PROC_FLAGS -mavx)
+	else()
+	set(LPCNET_C_PROC_FLAGS /arch:AVX)	
+	endif()
 elseif(${SSE} AND (${SSE_PRESENT} OR ${SSE_PRESENT} GREATER 0))
 # AVX and AVX2 machines will also match on SSE
     message(STATUS "sse processor flags found or enabled.")
+	if(NOT MSVC)
     set(LPCNET_C_PROC_FLAGS -msse4.1)
+	else()
+	#set(LPCNET_C_PROC_FLAGS /arch:AVX)
+	endif()
 elseif(${NEON} AND (${NEON_PRESENT} OR ${NEON_PRESENT} GREATER 0))
     # RPi / ARM 32bit
     message(STATUS "neon processor flags found or enabled.")
     set(LPCNET_C_PROC_FLAGS -mfpu=neon -march=armv8-a -mtune=cortex-a53)
+endif()
+
+if(MSVC)
+add_compile_definitions(_USE_MATH_DEFINES)
 endif()
 
 # grab latest NN model (or substitute your own)

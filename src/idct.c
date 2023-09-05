@@ -14,6 +14,7 @@
 #include <getopt.h>
 #include "freq.h"
 #include "lpcnet_quant.h"
+#include "from_codec2/defines.h"
 
 #define NB_BANDS    18
 
@@ -62,7 +63,7 @@ int main(int argc, char *argv[]) {
 
     float sum[NB_BANDS] = {0.0};
     float sumsq[NB_BANDS] = {0.0};
-    float dctLy[stride], Ly[stride];
+    VLA_CALLOC2(float, dctLy, Ly, stride);
     unsigned int i; for(i=0; i<stride; i++) Ly[stride] = 0.0;
     long n = 0;
     while(fread(dctLy, sizeof(float), stride, fin) == stride) {
@@ -81,20 +82,21 @@ int main(int argc, char *argv[]) {
             ret = fwrite(Ly, sizeof(float), stride, fout);
             assert(ret == stride);
         }
-        
+
         n++;
     }
-    
+
     if (measure) {
         fprintf(stderr, "n = %ld\n", n);
-        
-        for(i=0; i<NB_BANDS; i++) 
+
+        for(i=0; i<NB_BANDS; i++)
             printf("%f,", sum[i]/n);
         printf("\n");
-        for(i=0; i<NB_BANDS; i++) 
+        for(i=0; i<NB_BANDS; i++)
             printf("%f,", sqrt((sumsq[i]-sum[i]*sum[i]/n)/n));
         printf("\n");
     }
-    
+
+    VLA_FREE(dctLy, Ly);
     return 0;
 }

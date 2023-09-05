@@ -33,6 +33,7 @@
 #include "arch.h"
 #include "common.h"
 #include "pitch.h"
+#include "from_codec2/defines.h"
 
 float _celt_lpc(
       opus_val16       *_lpc, /* out: [0...p-1] LPC coefficients      */
@@ -100,7 +101,7 @@ void celt_fir(
          int ord)
 {
    int i,j;
-   opus_val16 rnum[ord];
+   VLA_CALLOC(opus_val16, rnum, ord);
    for(i=0;i<ord;i++)
       rnum[i] = num[ord-i-1];
    for (i=0;i<N-3;i+=4)
@@ -123,6 +124,7 @@ void celt_fir(
          sum = MAC16_16(sum,rnum[j],x[i+j-ord]);
       y[i] = ROUND16(sum, SIG_SHIFT);
    }
+   VLA_FREE(rnum);
 }
 
 void celt_iir(const opus_val32 *_x,
@@ -151,8 +153,8 @@ void celt_iir(const opus_val32 *_x,
 #else
    int i,j;
    celt_assert((ord&3)==0);
-   opus_val16 rden[ord];
-   opus_val16 y[N+ord];
+   VLA_CALLOC(opus_val16, rden, ord);
+   VLA_CALLOC(opus_val16, y, N+ord);
    for(i=0;i<ord;i++)
       rden[i] = den[ord-i-1];
    for(i=0;i<ord;i++)
@@ -196,6 +198,7 @@ void celt_iir(const opus_val32 *_x,
    }
    for(i=0;i<ord;i++)
       mem[i] = _y[N-i-1];
+   VLA_FREE(rden,y);
 #endif
 }
 
@@ -212,7 +215,7 @@ int _celt_autocorr(
    int fastN=n-lag;
    int shift;
    const opus_val16 *xptr;
-   opus_val16 xx[n];
+   VLA_CALLOC(opus_val16, xx ,n);
    celt_assert(n>0);
    celt_assert(overlap>=0);
    if (overlap == 0)
@@ -236,5 +239,6 @@ int _celt_autocorr(
          d = MAC16_16(d, xptr[i], xptr[i-k]);
       ac[k] += d;
    }
+   VLA_FREE(xx);
    return shift;
 }

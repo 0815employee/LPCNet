@@ -20,6 +20,7 @@
 #include "common.h"
 #include "freq.h"
 #include "lpcnet_quant.h"
+#include "from_codec2/defines.h"
 
 #define NB_FEATURES    55
 #define MAX_STAGES     5    /* max number of VQ stages                */
@@ -219,10 +220,10 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "\n");
     
     /* delay line so we can pass some features (like pitch and voicing) through unmodified */
-    float features_prev[dec+1][NB_FEATURES];
+    VLA_CALLOC_DIM2(float, features_prev, dec+1, NB_FEATURES);
     /* adjacent vectors used for linear interpolation, note only 0..17 and 38,39 used */
     float features_lin[2][NB_FEATURES];
-    
+
     for(d=0; d<dec+1; d++)
         for(i=0; i<NB_FEATURES; i++)
             features_prev[d][i] = 0.0;
@@ -231,7 +232,7 @@ int main(int argc, char *argv[]) {
             features_lin[d][i] = 0.0;
     for(i=0; i<NB_FEATURES; i++)
         features_quant[i] = 0.0;
-    
+
     fin = stdin;
     fout = stdout;
 
@@ -240,7 +241,7 @@ int main(int argc, char *argv[]) {
        Out:          f0 (f0+f2)/2) f2 (f2+f4)/2 f4 ....
 
        features_prev
-       2             f2     f3     f4    f5     f6     
+       2             f2     f3     f4    f5     f6
        1             f1     f2     f3    f4     f5
        0             f0     f1     f2    f3     f4
 
@@ -248,14 +249,14 @@ int main(int argc, char *argv[]) {
        1             f2     f2     f4    f4     f6
        0             f0     f0     f2    f2     f4
     */
-    
+
     /* dec == 3:
        In.:          f3        f4          f5        f6       f7
        Out: ....     f0  2f0/3 + f3/3  f0/3 + 2f2/3  f3  2f3/3 + f6/3
 
        features_prev
        3             f3        f4          f5        f6       f7
-       2             f2        f3          f4        f5       f6     
+       2             f2        f3          f4        f5       f6
        1             f1        f2          f3        f4       f5
        0             f0        f1          f2        f3       f4
 
@@ -268,9 +269,9 @@ int main(int argc, char *argv[]) {
     for(i=0; i<NOUTLIERS; i++)
         noutliers[i] = 0;
     int qv = 0;
-    
+
     while(fread(features, sizeof(float), NB_FEATURES, fin) == NB_FEATURES) {
-       
+
         for(i=0; i<NB_FEATURES; i++) {
             if (isnan(features[i])) {
                 fprintf(stderr, "f: %d i: %d\n", f, i);
@@ -283,7 +284,7 @@ int main(int argc, char *argv[]) {
             idct(tmp, features);
             for(i=0; i<NB_BANDS; i++) features[i] = tmp[i];
         }
-        
+
         /* convert cepstrals to dB */
         for(i=0; i<NB_BANDS; i++)
             features[i] *= 10.0;
@@ -293,12 +294,12 @@ int main(int argc, char *argv[]) {
            doing it here, we won't be measuring SD of this step, SD
            results will be on weighted vector. */
         features[0] *= weight;
-        
+
         /* apply lower limit to features[0] */
 
         if (features[0] < lower_limit) features[0] = lower_limit;
         if (features[0] > upper_limit) features[0] = upper_limit;
-       
+
         /* optionally load external pitch est sample and replace pitch feature */
         if (fpitch != NULL) {
             float f0;
@@ -313,7 +314,7 @@ int main(int argc, char *argv[]) {
 
         /* optionally pitch gain bias - but I would prefer a non-magic numbers approach */
         features[2*NB_BANDS+1] += pitch_gain_bias;
-           
+
         /* maintain delay line of unquantised features for partial quantisation and distortion measure */
         for(d=0; d<dec; d++)
             for(i=0; i<NB_FEATURES; i++)
@@ -324,7 +325,7 @@ int main(int argc, char *argv[]) {
         // clear output features to make sure we are not cheating.
         // Note we cant clear quant_out as we need memory of last
         // frames output for pred quant
-        
+
         for(i=0; i<NB_FEATURES; i++)
             features_out[i] = 0.0;
 
@@ -369,14 +370,14 @@ int main(int argc, char *argv[]) {
                 features_quant[2*NB_BANDS+1] = pitch_gain_decode(ind);
             }
             else {
-                features_quant[2*NB_BANDS] = features[2*NB_BANDS]; 
+                features_quant[2*NB_BANDS] = features[2*NB_BANDS];
                 features_quant[2*NB_BANDS+1] = features[2*NB_BANDS+1];   /* pitch gain */
             }
-            
+
             /* update linear interpolation arrays */
             for(i=0; i<NB_FEATURES; i++) {
                 features_lin[0][i] = features_lin[1][i];
-                features_lin[1][i] = features_quant[i];                
+                features_lin[1][i] = features_quant[i];
             }
 
             /* pass (quantised) frame through */
@@ -401,11 +402,11 @@ int main(int argc, char *argv[]) {
                     break;
                 }
             qv++;
-            
+
 
         } else {
             /* interpolated frame ----------------------------------------*/
-            
+
             for(i=0; i<NB_FEATURES; i++)
                 features_out[i] = 0.0;
             /* interpolate frame */
@@ -416,10 +417,10 @@ int main(int argc, char *argv[]) {
             }
 
         }
-        
+
         f++;
-        
-        features_out[0] /= weight;    
+
+        features_out[0] /= weight;
 
         /* convert cespstrals back from dB */
         for(i=0; i<NB_BANDS; i++)
@@ -438,13 +439,13 @@ int main(int argc, char *argv[]) {
                 exit(0);
             }
         }
-        
+
         if (small_vec) {
             /* zero out unused cepstrals in small vec mode */
             for(i=12; i<NB_BANDS; i++)
                 features_out[i] = 0.0;
         }
-        
+
         fwrite(features_out, sizeof(float), NB_FEATURES, fout);
         fflush(stdin);
         fflush(stdout);
@@ -460,6 +461,7 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "%5.4f ", (float)noutliers[i]/qv);
     fprintf(stderr, "\n");
     fclose(fin); fclose(fout); if (lpcnet_fsv != NULL) fclose(lpcnet_fsv); if(fpitch != NULL) fclose(fpitch);
+    VLA_FREE_DIM2(features_prev);
 }
 
 
